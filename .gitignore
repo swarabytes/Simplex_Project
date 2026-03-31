@@ -7,3 +7,10 @@ instance/
 *.pyc
 install_log.txt
 install_log_utf8.txt
+.env
+venv/
+__pycache__/
+*.pyc
+instance/
+install_log.txt
+install_log_utf8.txt
