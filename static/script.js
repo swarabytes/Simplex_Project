@@ -104,9 +104,21 @@ function generate() {
         </div>`;
         consList.insertAdjacentHTML('beforeend', rowHtml);
     }
+    saveState();
 }
 
 // --- 3. SOLVER EXECUTION ---
+
+// ✅ AUTO SAVE INPUT (NEW FEATURE)
+function saveState() {
+    const state = {
+        vars: document.getElementById("vars").value,
+        cons: document.getElementById("cons").value,
+        is_min: document.getElementById("is_min").checked
+    };
+
+    localStorage.setItem("simplex_state", JSON.stringify(state));
+}
 
 async function runSolver() {
     const n = parseInt(document.getElementById("vars").value);
@@ -827,8 +839,17 @@ if (dropZone) {
 
 // Auto-generate default grid on page load
 window.addEventListener("DOMContentLoaded", () => {
+    const saved = localStorage.getItem("simplex_state");
+
+    if (saved) {
+        const state = JSON.parse(saved);
+        document.getElementById("vars").value = state.vars;
+        document.getElementById("cons").value = state.cons;
+        document.getElementById("is_min").checked = state.is_min;
+    }
+
     generate();
-}); 
+});
 
 function showParseStatus(message, type = "success") {
     const status = document.getElementById("parse-status");
