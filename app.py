@@ -61,7 +61,6 @@ with app.app_context():
 # --- OPTIMIZATION NOTES ---
 qs_graphs_note = "<b>Note:</b> Graphical representations are mathematically generated based on constraints. Feasible regions are calculated using boundary intersections."
 
-# --- SOLVER LOGIC ---
 
 def normalize_constraints(A, b, signs):
     """Step 1: Ensure RHS >= 0."""
