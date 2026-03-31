@@ -337,10 +337,13 @@ def build_pdf_report(h, img2d_b64=None, img3d_b64=None):
     elements = []
     styles = getSampleStyleSheet()
     
-    # Title & Timestamp
-    elements.append(Paragraph(f"<b>OptiSolve Report: {h.problem_name}</b>", styles['Title']))
+    # Timestamp Header (Top Left Corner)
     time_str = h.timestamp.strftime('%Y-%m-%d %H:%M:%S') if h.timestamp else "N/A"
-    elements.append(Paragraph(f"<i>Date & Time of Solving: {time_str}</i>", styles['Normal']))
+    elements.append(Paragraph(f"<font size=8 color='gray'>Date & Time of Solving: {time_str}</font>", styles['Normal']))
+    elements.append(Spacer(1, 20))
+    
+    # Title
+    elements.append(Paragraph(f"<b>OptiSolve Report: {h.problem_name}</b>", styles['Title']))
     elements.append(Spacer(1, 12))
     
     # Mathematical Model Re-Construction
