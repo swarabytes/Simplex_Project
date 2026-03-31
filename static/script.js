@@ -71,7 +71,7 @@ function generate() {
                 <option value=">=">≥</option>
                 <option value="=">=</option>
             </select>
-            <input type="number" id="b${i}" class="rhs-input" step="any" placeholder="RHS" style="width:80px; border-color:var(--accent);">
+            <input type="number" id="b${i}" step="any" placeholder="RHS" style="width:80px; border-color:var(--accent);">
         </div>`;
         consList.insertAdjacentHTML('beforeend', rowHtml);
     }
@@ -83,6 +83,11 @@ async function runSolver() {
     const n = parseInt(document.getElementById("vars").value);
     const m = parseInt(document.getElementById("cons").value);
     const is_min = document.getElementById("is_min").checked;
+
+    if (n < m) {
+        alert("Validation Error: Number of constraints must be less than or equal to variables !!");
+        return;
+    }
 
     let c = [], A = [], b = [], signs = [];
 
@@ -146,85 +151,114 @@ async function runSolver() {
 
 function renderOutput(data) {
     const outputSection = document.getElementById("output");
-    const varsCard = document.getElementById("variables-card");
-    const varsContent = document.getElementById("variables-content");
+    const finalCard = document.getElementById("final-card");
     const stepArea = document.getElementById("step-by-step");
-    const zDisplay = document.getElementById("z-value-display");
+    const sensSection = document.getElementById("sensitivity-section");
+    const sensContent = document.getElementById("sensitivity-content");
+    const sfSection = document.getElementById("standard-form-section");
+    const sfContent = document.getElementById("standard-form-content");
+    const interpSection = document.getElementById("interpretation-section");
     const interpContent = document.getElementById("interpretation-content");
     const graphSection = document.getElementById("graph-section");
-    const finalResultCard = document.getElementById("final-result-card");
 
     outputSection.classList.remove("hidden");
     outputSection.scrollIntoView({ behavior: 'smooth' });
 
-    // 1. Variable Values
-    if (data.solution) {
-        varsCard.classList.remove("hidden");
-        varsContent.innerHTML = data.solution.map((v, i) => `
-            <div class="sol-pill">
-                x<sub>${i + 1}</sub> = <span style="color:var(--accent); font-weight:900;">${v.toFixed(2)}</span>
-            </div>
-        `).join('');
+    // Show Standard Form
+    if (data.standard_form) {
+        sfSection.classList.remove("hidden");
+        sfContent.innerHTML = data.standard_form.replace(/\n/g, "<br>");
     }
 
-    // 2. Iteration Tables (populated later in the loop)
-    
-    // 3. Graphs
+    // Show Interpretation
+    if (data.interpretation) {
+        interpSection.classList.remove("hidden");
+        interpContent.innerHTML = data.interpretation;
+    }
+
+    // Handle Graphs
     if (data.plot_data) {
         graphSection.classList.remove("hidden");
-        // Store data globally for iteration sync
-        window.currentLPData = data;
         plotLP(data.plot_data, data.solution);
     } else {
         graphSection.classList.add("hidden");
     }
 
-    // 4. Final Z Result & Interpretation
-    if (data.status === "Optimal") {
-        finalResultCard.classList.remove("hidden");
-        zDisplay.innerHTML = `
-            <div style="text-align:left;">
-                <span style="background:var(--accent); color:white; padding:4px 12px; border-radius:4px; font-weight:800; font-size:0.65rem; letter-spacing:1px; margin-bottom:12px; display:inline-block; text-transform:uppercase;">
-                    ${data.method} Method Found Optimal
-                </span>
-                <h2 style="font-size:3.5rem; font-weight:900; margin:5px 0; letter-spacing:-3px; color:var(--accent);">
-                    Z = ${data.z.toLocaleString()}
-                </h2>
-            </div>
-        `;
-        interpContent.innerHTML = data.interpretation || "No interpretation generated.";
-    } else {
-        finalResultCard.classList.remove("hidden");
-        zDisplay.innerHTML = `
+    if (data.status !== "Optimal") {
+        finalCard.innerHTML = `
             <div style="text-align:center; padding: 20px;">
                 <h2 style="color:#f43f5e; font-weight:900;">⚠️ ${data.status.toUpperCase()}</h2>
-                <p style="color:#64748b;">The algorithm could not find an optimal solution.</p>
+                <p style="color:#64748b;">The algorithm could not find an optimal solution for this problem.</p>
             </div>`;
         stepArea.innerHTML = "";
+        if (sensSection) sensSection.classList.add("hidden");
         return;
     }
 
-    // Iteration steps population
+    if (sensSection && data.sensitivity && data.sensitivity.length > 0) {
+        sensSection.classList.remove("hidden");
+        sensContent.innerHTML = `
+            <table style="width:100%; border-collapse:collapse; color:var(--text-color); font-size:0.8rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border);">
+                        <th style="text-align:left; padding:10px;">Resource</th>
+                        <th style="text-align:center; padding:10px;">Shadow Price</th>
+                        <th style="text-align:center; padding:10px;">Allowable Increase</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.sensitivity.map(s => `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding:10px; font-weight:700;">${s.variable}</td>
+                            <td style="padding:10px; text-align:center; color:var(--accent); font-family:monospace;">${s.shadow_price.toFixed(2)}</td>
+                            <td style="padding:10px; text-align:center; opacity:0.7;">${s.allowable_increase}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } else if (sensSection) {
+        sensSection.classList.add("hidden");
+    }
+
+    finalCard.innerHTML = `
+        <div style="text-align:left;">
+            <span style="background:var(--accent); color:white; padding:4px 12px; border-radius:4px; font-weight:800; font-size:0.65rem; letter-spacing:1px; margin-bottom:12px; display:inline-block; text-transform:uppercase;">
+                ${data.method} Method Found Optimal
+            </span>
+            <h2 style="font-size:3.5rem; font-weight:900; margin:5px 0; letter-spacing:-3px; color:var(--accent);">
+                Z = ${data.z.toLocaleString()}
+            </h2>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:15px;">
+                ${data.solution.map((v, i) => `
+                    <div class="sol-pill" style="background:#fff; padding:8px 16px; border-radius:8px; font-weight:700; border:2px solid #e2e8f0; color:#334155;">
+                        x<sub>${i + 1}</sub> = ${v.toFixed(2)}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
     stepArea.innerHTML = data.steps.map((s, idx) => {
         const headers = data.headers || [];
         const headerHtml = headers.map(h => `<th style="padding:12px; background:#f1f5f9; color:#475569; font-size:0.7rem; border:1px solid #e2e8f0;">${h}</th>`).join('');
         
         return `
-            <div class="iteration-block" style="margin-bottom:50px; cursor:pointer; transition: 0.3s;" onclick="highlightIteration(${idx})">
+            <div class="iteration-block" style="margin-bottom:50px; animation: fadeIn 0.5s ease-out forwards;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <p style="font-size:0.75rem; color:#94a3b8; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Iteration ${idx} <span style="margin-left:10px; color:var(--sci-teal); font-size:0.6rem;">(Click to view in graph)</span></p>
+                    <p style="font-size:0.75rem; color:#94a3b8; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Iteration ${idx}</p>
                     <p style="font-size:0.8rem; color:#1e293b; font-weight:600; background:#f8fafc; padding:4px 12px; border-radius:20px; border:1px solid #e2e8f0;">
                         ${s.explanation}
                     </p>
                 </div>
                 <div style="overflow-x:auto; border-radius:8px; border:1px solid #e2e8f0;">
-                    <table class="data-mono" style="width:100%; border-collapse:collapse; background:white;">
+                    <table style="width:100%; border-collapse:collapse; background:white;">
                         <thead><tr>${headerHtml}</tr></thead>
                         <tbody>
                         ${s.table.map((row, rIdx) => `
                             <tr style="${rIdx === s.key_row ? 'background:#fefce8;' : ''}">
                                 ${row.map((cell, cIdx) => {
-                                    let cellStyle = "padding:12px; border:1px solid #e2e8f0; font-size:0.9rem; text-align:center; color:#1e293b;";
+                                    let cellStyle = "padding:12px; border:1px solid #e2e8f0; font-family:'JetBrains Mono', monospace; font-size:0.9rem; text-align:center; color:#1e293b;";
                                     if (rIdx === s.key_row && cIdx === s.key_col) {
                                         cellStyle += "background:#fbbf24; color:white; font-weight:900; box-shadow:inset 0 0 0 2px #d97706;";
                                     } else if (cIdx === s.key_col) {
@@ -323,111 +357,12 @@ async function loadHistoryDetail(id) {
 
 // --- 6. UTILITY FUNCTIONS ---
 
-async function downloadPDF() {
-    if(!currentSolutionId) {
-        alert("Please solve a problem first to generate a report.");
-        return;
-    }
-
-    const pdfBtn = document.getElementById("pdf-btn");
-    const originalText = pdfBtn.innerText;
-    pdfBtn.innerText = "📸 Capturing Graphs...";
-    pdfBtn.disabled = true;
-
-    try {
-        let img2d = null;
-        let img3d = null;
-
-        // 1. Capture D3.js 2D Graph (SVG to PNG)
-        const svgElement = document.querySelector("#plot-2d svg");
-        if (svgElement) {
-            img2d = await captureSvgToImage(svgElement);
-        }
-
-        // 2. Capture Plotly 3D Graph (Plotly Built-in)
-        const plotlyDiv = document.getElementById("plot-3d");
-        if (plotlyDiv && plotlyDiv.classList.contains("js-plotly-plot")) {
-            img3d = await Plotly.toImage(plotlyDiv, { format: 'png', width: 1000, height: 700 });
-        }
-
-        pdfBtn.innerText = "📄 Generating PDF...";
-
-        // 3. Send to Complex Export Route
-        const response = await fetch("/export-pdf-complex", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                hid: currentSolutionId,
-                img2d: img2d,
-                img3d: img3d
-            })
-        });
-
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `OptiSolve_Full_Report_${currentSolutionId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        } else {
-            const err = await response.json();
-            throw new Error(err.message || "Export failed");
-        }
-
-    } catch (error) {
-        console.error("PDF Export Error:", error);
-        alert("Failed to export full report with graphs. Downloading standard version instead.");
+function downloadPDF() {
+    if(currentSolutionId) {
         window.location.href = `/export-pdf/${currentSolutionId}`;
-    } finally {
-        pdfBtn.innerText = originalText;
-        pdfBtn.disabled = false;
+    } else {
+        alert("Please solve a problem first to generate a report.");
     }
-}
-
-async function captureSvgToImage(svgElement) {
-    return new Promise((resolve, reject) => {
-        try {
-            const serializer = new XMLSerializer();
-            let source = serializer.serializeToString(svgElement);
-
-            // Add namespaces if missing
-            if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
-                source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-            }
-            if (!source.match(/^<svg[^>]+xmlns\:xlink="http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
-                source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
-            }
-
-            const canvas = document.createElement("canvas");
-            const context = canvas.getContext("2d");
-            const width = svgElement.clientWidth || 800;
-            const height = svgElement.clientHeight || 600;
-            
-            canvas.width = width * 2; // High-res
-            canvas.height = height * 2;
-            context.scale(2, 2);
-
-            const img = new Image();
-            const svgBlob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-            const url = URL.createObjectURL(svgBlob);
-
-            img.onload = () => {
-                context.fillStyle = "white"; // White background for PDF
-                context.fillRect(0, 0, width, height);
-                context.drawImage(img, 0, 0, width, height);
-                URL.revokeObjectURL(url);
-                resolve(canvas.toDataURL("image/png"));
-            };
-
-            img.onerror = (e) => reject(e);
-            img.src = url;
-        } catch (e) {
-            reject(e);
-        }
-    });
 }
 
 function resetAll() {
@@ -467,122 +402,6 @@ document.querySelectorAll('.nav-links a').forEach(link => {
 // SMART QUESTION PARSER (FINAL WORKING VERSION)
 // ==========================================
 
-async function processUploadedFile() {
-    const fileInput = document.getElementById("file-upload");
-    const ocrStatus = document.getElementById("ocr-status");
-    const ocrMsg = document.getElementById("ocr-message");
-
-    if (!fileInput.files.length) {
-        alert("Please upload a file first.");
-        return;
-    }
-
-    ocrStatus.classList.remove("hidden");
-    ocrMsg.innerText = "Extracting with Hybrid OCR (Mathpix/Local)...";
-
-    try {
-        const file = fileInput.files[0];
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch("/upload-image", {
-            method: "POST",
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (result.status === "Error") throw new Error(result.message);
-
-        ocrMsg.innerText = `✨ Auto-filling workspace (${result.source} Engine)...`;
-
-        // Automatically map returned JSON to the main solver grid
-        autoFillLppGrid(result.data);
-        
-        // Populate the manual UI with the raw extracted text so user sees the parse target
-        document.getElementById("question-text").value = result.text;
-
-        setTimeout(() => {
-            ocrStatus.classList.add("hidden");
-            document.getElementById("workspace-section").scrollIntoView({ behavior: "smooth" });
-        }, 1000);
-
-    } catch (error) {
-        console.error("Hybrid OCR Error:", error);
-        ocrStatus.classList.add("hidden");
-        alert("⚠️ Scan failed: " + error.message);
-    }
-}
-
-/**
- * Automatically populates the Simplex workspace grids with parsed LPP data.
- * @param {Object} data - Processed LPP JSON from backend.
- */
-/**
- * Automatically populates the Simplex workspace grids with parsed LPP data.
- * @param {Object} data - Processed LPP JSON from backend or frontend parser.
- */
-function autoFillLppGrid(data) {
-    const varInput = document.getElementById("vars");
-    const consInput = document.getElementById("cons");
-    const isMinCheckbox = document.getElementById("is_min");
-
-    const numVars = data.variables.length;
-    const numCons = data.constraints.length;
-    
-    varInput.value = numVars;
-    consInput.value = numCons;
-    isMinCheckbox.checked = (data.objective.type === "min");
-
-    // Initialize the Grid
-    generate(); 
-
-    // Fill Objective Coefficients
-    const objInputs = document.querySelectorAll("#obj-row input");
-    data.objective.coefficients.forEach((coeff, index) => {
-        if (objInputs[index]) objInputs[index].value = coeff;
-    });
-
-    // Fill Constraints
-    const consList = document.getElementById("cons-list");
-    const constraintRows = consList.querySelectorAll(".math-row");
-
-    data.constraints.forEach((constraint, rowIndex) => {
-        const row = constraintRows[rowIndex];
-        if (!row) return;
-
-        // Fill Decision Variable Coefficients (all inputs except RHS)
-        const rowInputs = row.querySelectorAll("input[type='number']:not(.rhs-input)");
-        constraint.coefficients.forEach((coeff, colIndex) => {
-            if (rowInputs[colIndex]) rowInputs[colIndex].value = coeff;
-        });
-
-        // Fill Operator
-        const operatorSelect = row.querySelector("select");
-        if (operatorSelect) operatorSelect.value = constraint.operator || constraint.type || "<=";
-
-        // Fill RHS
-        const rhsInput = row.querySelector(".rhs-input");
-        if (rhsInput) rhsInput.value = constraint.rhs !== undefined ? constraint.rhs : (constraint.target || 0);
-    });
-
-    document.getElementById("math-ui").classList.remove("hidden");
-}
-
-function loadImage(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 function parseTextQuestion() {
     const rawText = document.getElementById("question-text").value.trim();
 
@@ -592,154 +411,225 @@ function parseTextQuestion() {
     }
 
     try {
-        // Normalize text: handle unicode signs, varied operators, and subscripts
+        // Normalize text
         let text = rawText
-            .replace(/≤|<=/g, "<=")
-            .replace(/≥|>=/g, ">=")
-            .replace(/−|–|—/g, "-") 
-            .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (m) => m.charCodeAt(0) - 8320)
-            .replace(/[ \t]+/g, " ") 
+            .replace(/≤/g, "<=")
+            .replace(/≥/g, ">=")
+            .replace(/−/g, "-")
             .trim();
 
-        // Support for single-line inputs by splitting on keywords
-        let parts = text.split(/(?=subject to|s\.t\.|st:|constraints:)/i);
-        let objectiveSection = parts[0];
-        let constraintSection = parts.slice(1).join(" ");
+        const lines = text
+            .split("\n")
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
 
-        const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
         let objectiveLine = "";
         let constraintLines = [];
         let isMin = false;
 
-        // STEP 1: Intelligent Decomposition
-        if (parts.length > 1) {
-            // Keyword splitting was successful
-            objectiveLine = objectiveSection.trim();
-            isMin = objectiveLine.toLowerCase().includes("min");
-            // Extract constraints from the rest, split by common delimiters if newlines are missing
-            constraintLines = constraintSection
-                .replace(/(subject to|s\.t\.|st:|constraints:|where)/gi, "")
-                .split(/[\n,;]/)
-                .map(l => l.trim())
-                .filter(l => l.length > 0 && (l.includes("<=") || l.includes(">=") || l.includes("=")));
-        } else {
-            // Traditional line-by-line parsing
-            for (let line of lines) {
-                const lower = line.toLowerCase();
-                const compact = lower.replace(/\s+/g, "");
+        // -------------------------------
+        // STEP 1: Detect objective + constraints
+        // -------------------------------
+        for (let line of lines) {
+            const lower = line.toLowerCase().trim();
+            const compact = lower.replace(/\s+/g, "");
 
-                if (lower.includes("max") || lower.includes("min")) {
-                    objectiveLine = line;
-                    isMin = lower.includes("min");
-                } else if (compact.includes("<=") || compact.includes(">=") || (compact.includes("=") && !compact.includes("z="))) {
-                    if (!compact.match(/[a-z0-9,]+>=0/i)) { // Skip non-negativity
-                        constraintLines.push(line);
-                    }
-                }
+            // Objective function
+            if (
+                lower.startsWith("maximize") ||
+                lower.startsWith("max") ||
+                lower.startsWith("minimize") ||
+                lower.startsWith("min")
+            ) {
+                objectiveLine = line;
+                isMin = lower.startsWith("min");
+                continue;
+            }
+
+            // Ignore helper labels
+            if (
+                lower === "subject to:" ||
+                lower === "subject to" ||
+                lower === "s.t." ||
+                lower === "s.t" ||
+                lower === "st" ||
+                lower === "constraints:" ||
+                lower === "constraints"
+            ) {
+                continue;
+            }
+
+            // Ignore non-negativity like x, y >= 0
+            if (/^[a-z](,[a-z])*>=0$/.test(compact)) {
+                continue;
+            }
+
+            // Constraint detection
+            if (
+                compact.includes("<=") ||
+                compact.includes(">=") ||
+                (compact.includes("=") && !compact.includes("z="))
+            ) {
+                constraintLines.push(line);
             }
         }
 
-        if (!objectiveLine && lines.length > 0) objectiveLine = lines[0];
-
         if (!objectiveLine) {
-            showParseStatus("❌ Objective function not found.", "error");
+            alert("Could not detect objective function.");
             return;
         }
 
-        // STEP 2: Intelligent Variable Discovery
+        if (constraintLines.length === 0) {
+            showParseStatus("❌ Could not detect constraints. Check your format.", "error");
+            return;
+        }
+
+        // -------------------------------
+        // STEP 2: Detect variables
+        // -------------------------------
         const combinedText = [objectiveLine, ...constraintLines].join(" ");
-        const potentialVars = combinedText.match(/[a-zA-Z]+[0-9_\u2080-\u2089]*/g) || [];
-        const blacklist = ["maximize", "max", "minimize", "min", "subject", "to", "st", "z", "constraints", "where"];
-        
+
         let variables = [...new Set(
-            potentialVars
+            (combinedText.match(/[a-zA-Z]+/g) || [])
                 .map(v => v.toLowerCase())
-                .filter(v => !blacklist.includes(v))
+                .filter(v =>
+                    ![
+                        "maximize", "max", "minimize", "min",
+                        "subject", "to", "st", "s", "t",
+                        "constraints", "z"
+                    ].includes(v)
+                )
         )];
 
-        variables.sort((a, b) => {
-            const numA = parseInt(a.match(/\d+/) || 0);
-            const numB = parseInt(b.match(/\d+/) || 0);
-            if (numA && numB) return numA - numB;
-            return a.localeCompare(b);
-        });
+        variables.sort();
 
         if (variables.length === 0) {
-            showParseStatus("❌ No variables detected.", "error");
+            alert("Could not detect variables.");
             return;
         }
 
-        // STEP 3: Map to autoFill format for consistency
-        const lppData = {
-            objective: {
-                type: isMin ? "min" : "max",
-                coefficients: extractCoefficients(objectiveLine.split("=").pop(), variables)
-            },
-            constraints: constraintLines.map(line => {
-                let sign = line.includes("<=") ? "<=" : (line.includes(">=") ? ">=" : "=");
-                let pts = line.split(sign);
-                return {
-                    coefficients: extractCoefficients(pts[0], variables),
-                    operator: sign,
-                    rhs: parseFloat(pts[1]) || 0
-                };
-            }),
-            variables: variables
-        };
+        const n = variables.length;
+        const m = constraintLines.length;
 
-        autoFillLppGrid(lppData);
-        showParseStatus("✔ Parsing complete!", "success");
+        // -------------------------------
+        // STEP 3: Generate grid
+        // -------------------------------
+        document.getElementById("vars").value = n;
+        document.getElementById("cons").value = m;
+        generate();
+
+        document.getElementById("is_min").checked = isMin;
+
+        // -------------------------------
+        // STEP 4: Parse objective coefficients
+        // -------------------------------
+        let objExpr = objectiveLine;
+
+        if (objectiveLine.includes("=")) {
+            objExpr = objectiveLine.split("=")[1].trim();
+        } else {
+            objExpr = objectiveLine
+                .replace(/maximize/i, "")
+                .replace(/max/i, "")
+                .replace(/minimize/i, "")
+                .replace(/min/i, "")
+                .replace(/z/i, "")
+                .trim();
+        }
+
+        const objCoeffs = extractCoefficients(objExpr, variables);
+
+        objCoeffs.forEach((val, i) => {
+            const input = document.getElementById(`c${i}`);
+            if (input) input.value = val;
+        });
+
+        // -------------------------------
+        // STEP 5: Parse constraints
+        // -------------------------------
+        constraintLines.forEach((line, i) => {
+            let sign = "";
+
+            if (line.includes("<=")) sign = "<=";
+            else if (line.includes(">=")) sign = ">=";
+            else if (line.includes("=")) sign = "=";
+
+            if (!sign) return;
+
+            const parts = line.split(sign);
+            if (parts.length !== 2) return;
+
+            const lhs = parts[0].trim();
+            const rhs = parseFloat(parts[1].trim());
+
+            const coeffs = extractCoefficients(lhs, variables);
+
+            coeffs.forEach((val, j) => {
+                const input = document.getElementById(`a${i}${j}`);
+                if (input) input.value = val;
+            });
+
+            const rhsInput = document.getElementById(`b${i}`);
+            const signInput = document.getElementById(`s${i}`);
+
+            if (rhsInput) rhsInput.value = isNaN(rhs) ? 0 : rhs;
+            if (signInput) signInput.value = sign;
+        });
+
+        // -------------------------------
+        // STEP 6: Scroll to workspace
+        // -------------------------------
         document.getElementById("workspace-section").scrollIntoView({ behavior: "smooth" });
 
+        setTimeout(() => {
+            showParseStatus("✔ Question parsed successfully! Scroll down to run the solver.", "success");
+        }, 300);
+
     } catch (error) {
-        console.error("Critical Parse Error:", error);
-        showParseStatus("❌ Parsing failed. Check format.", "error");
+        console.error("Parser Error:", error);
+        alert("Failed to parse the question. Please use a standard LP format.");
     }
 }
 
-/**
- * Robustly pulls numeric coefficients for a list of variables from a string.
- * Handles: 2x, -2x, +2x, x (implicit 1), -x (implicit -1), 0.5x
- */
 function extractCoefficients(expression, variables) {
-    // Strip spaces for unified regex matching, but handle variables with spaces (e.g. "x 1")
-    // First, try to join variable parts if they are split by spaces in the source
-    let cleanExpr = expression.replace(/\s+/g, " ");
-    variables.forEach(v => {
-        // Find pattern like "x 1" and replace with "x1"
-        if (v.match(/[a-zA-Z]+\d+/)) {
-            const parts = v.match(/([a-zA-Z]+)(\d+)/);
-            const spaced = parts[1] + " " + parts[2];
-            cleanExpr = cleanExpr.split(spaced).join(v);
-        }
-    });
-    
-    cleanExpr = cleanExpr.replace(/\s+/g, "");
-    const results = Array(variables.length).fill(0);
+    expression = expression.replace(/\s+/g, "");
+    const coeffs = Array(variables.length).fill(0);
 
-    variables.forEach((variable, idx) => {
-        const regex = new RegExp(`([+-]?\\d*\\.?\\d*)${variable}(?![a-zA-Z0-9_\\u2080-\\u2089])`, "g");
-        
-        let match;
-        while ((match = regex.exec(cleanExpr)) !== null) {
-            let coeffStr = match[1];
-            
-            let val = 0;
-            if (coeffStr === "" || coeffStr === "+") val = 1;
-            else if (coeffStr === "-") val = -1;
-            else val = parseFloat(coeffStr);
-            
-            results[idx] += isNaN(val) ? 0 : val;
-        }
+    variables.forEach((variable, index) => {
+        const regex = new RegExp(`([+-]?\\d*\\.?\\d*)${variable}(?![a-zA-Z0-9])`, "g");
+        const matches = [...expression.matchAll(regex)];
+
+        let total = 0;
+
+        matches.forEach(match => {
+            let coeff = match[1];
+
+            if (coeff === "" || coeff === "+") coeff = 1;
+            else if (coeff === "-") coeff = -1;
+            else coeff = parseFloat(coeff);
+
+            total += coeff;
+        });
+
+        coeffs[index] = total;
     });
 
-    return results;
+    return coeffs;
 }
 function clearQuestionInput() {
     document.getElementById("question-text").value = "";
 }
 
+function processUploadedFile() {
+    const fileInput = document.getElementById("file-upload");
 
+    if (!fileInput.files.length) {
+        alert("Please upload a file first.");
+        return;
+    }
+
+    alert("OCR/Image extraction module will be connected next.");
+}
 
 function clearUploadedFile() {
     const fileInput = document.getElementById("file-upload");
@@ -821,14 +711,14 @@ function plotLP(plotData, solution) {
     document.getElementById(container3D).innerHTML = "";
 
     if (num_vars === 2) {
-        // Standard D3 2D Plot
+        // Standard 2D Plot
         plot2D(A, b, signs, c, solution, container2D);
-        // Three.js 3D Perspective of Objective Surface
+        // Special 3D Visualization of the Z surface
         plot3DZsurface(A, b, c, solution, container3D);
     } else if (num_vars === 3) {
-        // High-end Three.js 3D Feasible Volume
+        // 3D feasible space
         plot3D(A, b, signs, c, solution, container3D);
-        // D3.js 2D Projection
+        // 2D slice or projection
         plot2Dprojection(A, b, solution, container2D);
     } else {
         const errorMsg = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#64748b; font-size:0.8rem; text-align:center; padding: 20px;">Visualization capped at 3 variables.</div>`;
@@ -837,301 +727,53 @@ function plotLP(plotData, solution) {
     }
 }
 
-function plot2D(A, b, signs, c, solution, containerId) {
-    const container = d3.select(`#${containerId}`);
-    container.selectAll("*").remove();
+function plot2D(A, b, signs, c, solution, container) {
+    const traces = [];
+    let maxVal = Math.max(...b, ...solution, 10);
+    const xRange = [0, maxVal * 1.5];
+    const yRange = [0, maxVal * 1.5];
 
-    const width = container.node().clientWidth;
-    const height = container.node().clientHeight || 450;
-    const margin = { top: 40, right: 40, bottom: 60, left: 60 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-
-    const svg = container.append("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    // 1. CALCULATE SCALES
-    let maxVal = Math.max(...b, ...solution, 5) * 1.2;
-    const xScale = d3.scaleLinear().domain([0, maxVal]).range([0, innerWidth]);
-    const yScale = d3.scaleLinear().domain([0, maxVal]).range([innerHeight, 0]);
-
-    // 2. GRID LINES
-    svg.append("g")
-        .attr("class", "grid")
-        .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale).ticks(10).tickSize(-innerHeight).tickFormat(""))
-        .style("stroke-opacity", 0.1);
-
-    svg.append("g")
-        .attr("class", "grid")
-        .call(d3.axisLeft(yScale).ticks(10).tickSize(-innerWidth).tickFormat(""))
-        .style("stroke-opacity", 0.1);
-
-    // 3. AXES
-    svg.append("g")
-        .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale).ticks(5))
-        .attr("color", "var(--text-dim)");
-
-    svg.append("g")
-        .call(d3.axisLeft(yScale).ticks(5))
-        .attr("color", "var(--text-dim)");
-
-    // Labels
-    svg.append("text")
-        .attr("x", innerWidth / 2)
-        .attr("y", innerHeight + 45)
-        .attr("text-anchor", "middle")
-        .attr("fill", "var(--text-main)")
-        .style("font-size", "0.7rem")
-        .text("Variable x1 (Horizontal)");
-
-    svg.append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -innerHeight / 2)
-        .attr("y", -45)
-        .attr("text-anchor", "middle")
-        .attr("fill", "var(--text-main)")
-        .style("font-size", "0.7rem")
-        .text("Variable x2 (Vertical)");
-
-    // 4. FIND FEASIBLE REGION (Intersection Points)
-    const points = [];
-    // Include axes
-    const lines = A.map((row, i) => ({ a1: row[0], a2: row[1], b: b[i], sign: signs[i] }));
-    lines.push({ a1: 1, a2: 0, b: 0, sign: ">=" }); // x1 >= 0
-    lines.push({ a1: 0, a2: 1, b: 0, sign: ">=" }); // x2 >= 0
-
-    // Intersection of all pairs
-    for (let i = 0; i < lines.length; i++) {
-        for (let j = i + 1; j < lines.length; j++) {
-            const l1 = lines[i], l2 = lines[j];
-            const det = l1.a1 * l2.a2 - l1.a2 * l2.a1;
-            if (Math.abs(det) > 1e-9) {
-                const px = (l1.b * l2.a2 - l2.b * l1.a2) / det;
-                const py = (l1.a1 * l2.b - l2.a1 * l1.b) / det;
-
-                // Check feasibility against ALL constraints
-                let isFeasible = true;
-                for (const constraint of lines) {
-                    const val = constraint.a1 * px + constraint.a2 * py;
-                    if (constraint.sign === "<=" && val > constraint.b + 1e-7) isFeasible = false;
-                    else if (constraint.sign === ">=" && val < constraint.b - 1e-7) isFeasible = false;
-                    else if (constraint.sign === "=" && Math.abs(val - constraint.b) > 1e-7) isFeasible = false;
-                }
-                if (isFeasible) points.push({ x: px, y: py });
-            }
-        }
-    }
-
-    // Sort points to form polygon (Convex Hull approach)
-    if (points.length > 0) {
-        const center = {
-            x: d3.mean(points, d => d.x),
-            y: d3.mean(points, d => d.y)
-        };
-        points.sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
-
-        // 5. SHADE FEASIBLE REGION
-        const polyPath = d3.line()
-            .x(d => xScale(d.x))
-            .y(d => yScale(d.y));
-
-        svg.append("path")
-            .datum(points)
-            .attr("d", polyPath)
-            .attr("fill", "var(--sci-teal)")
-            .attr("fill-opacity", 0)
-            .attr("stroke", "var(--sci-teal)")
-            .attr("stroke-width", 2)
-            .attr("stroke-dasharray", "5,5")
-            .transition().duration(1000).delay(500)
-            .attr("fill-opacity", 0.15);
-    }
-
-    // 6. DRAW CONSTRAINT LINES
     A.forEach((row, i) => {
         const a1 = row[0], a2 = row[1], rhs = b[i];
-        let xPts = [], yPts = [];
-
+        let x_pts = [], y_pts = [];
         if (Math.abs(a2) > 1e-9) {
-            xPts = [0, maxVal];
-            yPts = [rhs / a2, (rhs - a1 * maxVal) / a2];
+            x_pts = [0, xRange[1]];
+            y_pts = [rhs / a2, (rhs - a1 * xRange[1]) / a2];
         } else if (Math.abs(a1) > 1e-9) {
-            xPts = [rhs / a1, rhs / a1];
-            yPts = [0, maxVal];
+            x_pts = [rhs / a1, rhs / a1];
+            y_pts = [0, yRange[1]];
         }
-
-        const line = svg.append("line")
-            .attr("x1", xScale(xPts[0]))
-            .attr("y1", yScale(yPts[0]))
-            .attr("x2", xScale(xPts[0])) // Start animation at point 1
-            .attr("y2", yScale(yPts[0]))
-            .attr("stroke", `hsl(${i * 137.5 % 360}, 70%, 60%)`)
-            .attr("stroke-width", 2)
-            .attr("stroke-opacity", 0.8);
-
-        line.transition().duration(1500)
-            .attr("x2", xScale(xPts[1]))
-            .attr("y2", yScale(yPts[1]));
-            
-        // Interactive Tooltip on line
-        line.on("mouseover", function() {
-            d3.select(this).attr("stroke-width", 4).attr("stroke-opacity", 1);
-        }).on("mouseout", function() {
-            d3.select(this).attr("stroke-width", 2).attr("stroke-opacity", 0.8);
-        });
+        traces.push({ x: x_pts, y: y_pts, mode: 'lines', name: `C${i+1}`, line: { width: 3 } });
     });
 
-    // 7. OPTIMAL POINT
-    if (solution && solution.length >= 2) {
-        const optimal = svg.append("g")
-            .attr("class", "optimal-node")
-            .attr("transform", `translate(${xScale(solution[0])},${yScale(solution[1])})`);
+    traces.push({
+        x: [solution[0]], y: [solution[1]],
+        mode: 'markers+text', name: 'Optimal Point',
+        text: ['Optimal'], textposition: 'top right',
+        marker: { size: 14, color: '#f43f5e', symbol: 'star', line: { width: 2, color: 'white' } }
+    });
 
-        optimal.append("circle")
-            .attr("r", 0)
-            .attr("fill", "var(--sci-crimson)")
-            .style("filter", "drop-shadow(0 0 10px var(--sci-crimson))")
-            .transition().duration(800).delay(1500)
-            .attr("r", 8);
-
-        optimal.append("text")
-            .attr("y", -15)
-            .attr("text-anchor", "middle")
-            .attr("fill", "var(--sci-crimson)")
-            .style("font-weight", "900")
-            .style("font-size", "0.75rem")
-            .style("opacity", 0)
-            .text("Optimal Solution")
-            .transition().duration(500).delay(2000)
-            .style("opacity", 1);
-            
-        // Pulse effect
-        function pulse() {
-            optimal.select("circle")
-                .transition().duration(2000)
-                .attr("r", 12)
-                .transition().duration(2000)
-                .attr("r", 8)
-                .on("end", pulse);
-        }
-        pulse();
-    }
+    const layout = {
+        title: '2D Feasible Space (x1, x2)',
+        xaxis: { title: 'Variable x1', gridcolor: '#f1f5f9' },
+        yaxis: { title: 'Variable x2', gridcolor: '#f1f5f9' },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        margin: { t: 40, b: 40, l: 40, r: 40 }
+    };
+    Plotly.newPlot(container, traces, layout);
 }
 
-// --- INTERACTIVE ITERATION SYNC ---
-
-function highlightIteration(index) {
-    const data = window.currentLPData;
-    if (!data || !data.steps || !data.steps[index]) return;
-
-    // 1. Highlight the block in UI
-    const blocks = document.querySelectorAll(".iteration-block");
-    blocks.forEach((b, i) => {
-        if (i === index) b.classList.add("iteration-active");
-        else b.classList.remove("iteration-active");
-    });
-
-    // 2. Extract solution for this iteration
-    const step = data.steps[index];
-    const n = data.plot_data.num_vars;
-    const headers = data.headers || [];
-    const sol = new Array(n).fill(0);
-    
-    // Find basic variables in the current basis
-    step.basis.forEach((varName, rowIdx) => {
-        const varIdx = headers.indexOf(varName);
-        if (varIdx >= 0 && varIdx < n) {
-            sol[varIdx] = step.table[rowIdx][step.table[rowIdx].length - 1];
-        }
-    });
-
-    // 3. Update Plots
-    plotLP(data.plot_data, sol);
-    
-    // Smooth scroll back to graphs for better UX
-    document.getElementById("graph-section").scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-// --- PLOTLY 3D ENGINES (SCIENTIFIC STYLE) ---
-
-function setupAutoRotation(containerId) {
-    const gd = document.getElementById(containerId);
-    if (!gd) return;
-
-    // Clear any existing rotation interval
-    if (window._plotly3DInterval) {
-        clearInterval(window._plotly3DInterval);
-        window._plotly3DInterval = null;
-    }
-
-    // Read initial camera eye position from layout
-    let eye = { x: 1.6, y: 1.6, z: 1.2 };
-    try {
-        const cam = gd._fullLayout.scene.camera.eye;
-        eye = { x: cam.x, y: cam.y, z: cam.z };
-    } catch (e) {}
-
-    let angle = Math.atan2(eye.y, eye.x);
-    const radius = Math.sqrt(eye.x * eye.x + eye.y * eye.y);
-    let z = eye.z;
-    let isUserInteracting = false;
-    let resumeTimeout;
-
-    // Detect user drag/zoom and pause auto-rotation
-    gd.addEventListener('mousedown', () => {
-        isUserInteracting = true;
-        clearTimeout(resumeTimeout);
-    });
-    gd.addEventListener('mouseup', () => {
-        clearTimeout(resumeTimeout);
-        resumeTimeout = setTimeout(() => {
-            // Sync angle to where user left the camera
-            try {
-                const cam = gd._fullLayout.scene.camera.eye;
-                angle = Math.atan2(cam.y, cam.x);
-                z = cam.z;
-            } catch (e) {}
-            isUserInteracting = false;
-        }, 2500);
-    });
-    gd.addEventListener('wheel', () => {
-        isUserInteracting = true;
-        clearTimeout(resumeTimeout);
-        resumeTimeout = setTimeout(() => {
-            try {
-                const cam = gd._fullLayout.scene.camera.eye;
-                angle = Math.atan2(cam.y, cam.x);
-                z = cam.z;
-            } catch (e) {}
-            isUserInteracting = false;
-        }, 2500);
-    });
-
-    // Rotate camera on a fixed 40ms tick (~25 FPS)
-    window._plotly3DInterval = setInterval(() => {
-        if (isUserInteracting) return;
-        angle += 0.012; // ~0.7 degrees per frame — smooth & visible
-        const newX = radius * Math.cos(angle);
-        const newY = radius * Math.sin(angle);
-        Plotly.relayout(gd, { 'scene.camera.eye': { x: newX, y: newY, z: z } });
-    }, 40);
-}
-
-function plot3DZsurface(A, b, c, solution, containerId) {
-    let maxVal = Math.max(...solution, 5) * 1.5;
-    const steps = 25;
+function plot3DZsurface(A, b, c, solution, container) {
+    let maxVal = Math.max(...solution, 5);
+    const range = maxVal * 1.5;
+    const steps = 20;
 
     let x = [], y = [], z = [];
     for (let i = 0; i <= steps; i++) {
         let rowX = [], rowY = [], rowZ = [];
         for (let j = 0; j <= steps; j++) {
-            let xi = (i / steps) * maxVal;
-            let yj = (j / steps) * maxVal;
+            let xi = (i / steps) * range;
+            let yj = (j / steps) * range;
             rowX.push(xi);
             rowY.push(yj);
             rowZ.push(c[0] * xi + c[1] * yj);
@@ -1142,99 +784,77 @@ function plot3DZsurface(A, b, c, solution, containerId) {
     const traces = [{
         x: x, y: y, z: z,
         type: 'surface',
-        colorscale: [[0, '#0f172a'], [0.5, '#2dd4bf'], [1, '#f59e0b']],
-        opacity: 0.8,
+        colorscale: 'Viridis',
+        opacity: 0.7,
         showscale: false,
-        name: 'Objective Z',
-        contours: {
-            z: { show: true, usecolormap: true, project: { z: true } }
-        }
+        name: 'Objective Z'
     }];
 
     traces.push({
         x: [solution[0]], y: [solution[1]], z: [c[0] * solution[0] + c[1] * solution[1]],
-        type: 'scatter3d', mode: 'markers+text',
-        marker: { size: 10, color: '#f43f5e', opacity: 1, line: { width: 2, color: 'white' } },
-        text: ['Current State'], textposition: 'top center',
-        name: 'Solution Point'
+        type: 'scatter3d', mode: 'markers',
+        marker: { size: 10, color: 'red' },
+        name: 'Optimal Z'
     });
 
     const layout = {
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        scene: {
-            xaxis: { title: 'x1', gridcolor: 'rgba(255,255,255,0.1)', backgroundcolor: '#020617', showbackground: true },
-            yaxis: { title: 'x2', gridcolor: 'rgba(255,255,255,0.1)', backgroundcolor: '#020617', showbackground: true },
-            zaxis: { title: 'Z', gridcolor: 'rgba(255,255,255,0.1)', backgroundcolor: '#020617', showbackground: true },
-            camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
-        },
-        margin: { t: 0, b: 0, l: 0, r: 0 },
-        font: { family: 'JetBrains Mono, monospace', color: '#94a3b8', size: 10 }
+        title: '3D Z-Value Perspective',
+        scene: { xaxis: { title: 'x1' }, yaxis: { title: 'x2' }, zaxis: { title: 'Z' } },
+        margin: { t: 0, b: 0, l: 0, r: 0 }
     };
-    Plotly.newPlot(containerId, traces, layout).then(() => {
-        setupAutoRotation(containerId);
-    });
+    Plotly.newPlot(container, traces, layout);
 }
 
-function plot3D(A, b, signs, c, solution, containerId) {
+function plot3D(A, b, signs, c, solution, container) {
     const traces = [];
-    let maxVal = Math.max(...solution, 5) * 1.5;
+    let maxVal = Math.max(...solution, 5);
+    const limit = maxVal * 1.5;
 
     A.forEach((row, k) => {
         const [a1, a2, a3] = row;
         const rhs = b[k];
         let x = [], y = [], z = [];
-        const steps = 15;
+        const steps = 10;
         for (let i = 0; i <= steps; i++) {
             let rx = [], ry = [], rz = [];
             for (let j = 0; j <= steps; j++) {
-                let xi = (i / steps) * maxVal;
-                let yj = (j / steps) * maxVal;
+                let xi = (i / steps) * limit;
+                let yj = (j / steps) * limit;
                 rx.push(xi); ry.push(yj);
                 if (Math.abs(a3) > 1e-9) rz.push((rhs - a1 * xi - a2 * yj) / a3);
                 else rz.push(null);
             }
-            x.push(rx); y.push(ry);
-            if (Math.abs(a3) > 1e-9) z.push(rz);
+            x.push(rx); y.push(ry); if (Math.abs(a3) > 1e-9) z.push(rz);
         }
         if (z.length > 0) {
-            traces.push({
-                x, y, z, 
-                type: 'surface', 
-                opacity: 0.4, 
-                showscale: false, 
-                name: `C${k+1}`,
-                colorscale: [[0, `hsl(${k * 60}, 70%, 40%)`], [1, `hsl(${k * 60}, 70%, 60%)`]]
-            });
+            traces.push({ x, y, z, type: 'surface', opacity: 0.5, showscale: false, name: `C${k+1}` });
         }
     });
 
     traces.push({
         x: [solution[0]], y: [solution[1]], z: [solution[2]],
         type: 'scatter3d', mode: 'markers',
-        marker: { size: 12, color: '#f43f5e', line: { width: 2, color: 'white' } },
-        name: 'Solution Point'
+        marker: { size: 10, color: '#f43f5e' }, name: 'Optimal Solution'
     });
 
     const layout = {
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        scene: {
-            xaxis: { title: 'x1', gridcolor: 'rgba(255,255,255,0.1)', backgroundcolor: '#020617', showbackground: true },
-            yaxis: { title: 'x2', gridcolor: 'rgba(255,255,255,0.1)', backgroundcolor: '#020617', showbackground: true },
-            zaxis: { title: 'x3', gridcolor: 'rgba(255,255,255,0.1)', backgroundcolor: '#020617', showbackground: true },
-            camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
-        },
-        margin: { t: 0, b: 0, l: 0, r: 0 },
-        font: { family: 'JetBrains Mono, monospace', color: '#94a3b8', size: 10 }
+        title: '3D Feasible Space (x1, x2, x3)',
+        scene: { xaxis: { title: 'x1' }, yaxis: { title: 'x2' }, zaxis: { title: 'x3' } },
+        margin: { t: 0, b: 0, l: 0, r: 0 }
     };
-    Plotly.newPlot(containerId, traces, layout).then(() => {
-        setupAutoRotation(containerId);
-    });
+    Plotly.newPlot(container, traces, layout);
 }
 
-function plot2Dprojection(A, b, solution, containerId) {
-    const dummySigns = Array(A.length).fill("<=");
-    const dummyC = [1, 1];
-    plot2D(A.map(r => [r[0], r[1]]), b, dummySigns, dummyC, [solution[0], solution[1]], containerId);
+function plot2Dprojection(A, b, solution, container) {
+    const traces = [{
+        x: [solution[0]], y: [solution[1]],
+        mode: 'markers', marker: { size: 15, color: '#f43f5e' },
+        name: 'Optimal (Projection)'
+    }];
+    const layout = { 
+        title: '2D Projection (x1, x2)', 
+        xaxis: { title: 'x1' }, yaxis: { title: 'x2' },
+        margin: { t: 40, b: 40, l: 40, r: 40 }
+    };
+    Plotly.newPlot(container, traces, layout);
 }

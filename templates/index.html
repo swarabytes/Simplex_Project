@@ -10,13 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@500&family=Poppins:wght@800&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Visualization Libraries -->
+    <!-- Include Plotly.js for 2D/3D Plotting -->
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
-
 </head>
 <body>
 
@@ -170,11 +165,11 @@ x, y >= 0"></textarea>
 
                 <!-- File / OCR Upload -->
                 <div class="question-box">
-                    <h3>🔍 Smart Image Scan</h3>
-                    <p>Upload a photo of your LPP problem — OCR runs locally in your browser, no API key needed.</p>
+                    <h3>🖼️ Image / PDF Upload</h3>
+                    <p>Upload a handwritten or printed question image for OCR-based extraction.</p>
 
                     <div class="upload-zone" id="drop-zone">
-                        <p>📥 Drag & Drop Problem Image</p>
+                        <p>📥 Drag & Drop file here</p>
                         <span>or</span>
                         <label for="file-upload" class="upload-label">Choose File</label>
                         <input type="file" id="file-upload" accept=".png,.jpg,.jpeg,.pdf" hidden>
@@ -183,15 +178,8 @@ x, y >= 0"></textarea>
 
                     <div id="file-preview" class="file-preview hidden"></div>
 
-                    <div id="ocr-status" class="hidden" style="margin-top: 15px; padding: 10px; background: rgba(45, 212, 191, 0.1); border-radius: 8px; border: 1px solid var(--sci-teal); display: flex; align-items: center; gap: 10px;">
-                        <div class="ocr-spinner"></div>
-                        <span id="ocr-message" style="font-size: 0.75rem; color: var(--sci-teal); font-weight: 600;">Initialising Tesseract OCR...</span>
-                    </div>
-
-                    <canvas id="preprocess-canvas" class="hidden"></canvas>
-
                     <div class="question-actions">
-                        <button class="btn-gen" onclick="processUploadedFile()">🔍 Scan & Solve</button>
+                        <button class="btn-gen" onclick="processUploadedFile()">Scan & Extract</button>
                         <button class="btn-clear" onclick="clearUploadedFile()">Remove File</button>
                     </div>
                 </div>
@@ -210,6 +198,9 @@ x, y >= 0"></textarea>
             <div class="section-head">
                 <h2>Manual Solver Workspace</h2>
                 <p>Configure variables and constraints directly for simplex solving.</p>
+                <div style="background-color: rgba(244, 63, 94, 0.1); border-left: 4px solid #f43f5e; padding: 10px 15px; margin-top: 15px; border-radius: 4px;">
+                    <p style="margin: 0; color: #f43f5e; font-weight: 700; font-size: 0.85rem;">⚠️ Note: Number of constraints must be always less than or equal to variables !!</p>
+                </div>
             </div>
 
             <div class="setup-row">
@@ -249,63 +240,43 @@ x, y >= 0"></textarea>
 
         <section id="output" class="hidden">
             
-            <!-- Output Card Order: Variables -> Iterations -> Graphs -> Final Result -->
-            
-            <!-- 1. Decision Variable Values -->
-            <div class="glass-card hidden" id="variables-card">
-                <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
-                    Optimal Variable Values
-                </h3>
-                <div id="variables-content" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+            <div style="text-align: right; margin-bottom: 15px;">
+                <button id="pdf-btn" class="btn-gen hidden" style="padding: 8px 20px; font-size: 0.7rem; box-shadow: 0 2px 0px #785812;" onclick="downloadPDF()">📥 Export PDF</button>
             </div>
 
-            <!-- 2. Iteration Tables -->
-            <div class="glass-card" id="iterations-card">
+            <!-- Standard Form Layout -->
+            <div class="glass-card hidden" id="standard-form-section">
                 <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
-                    Solution Iterations (Simplex Steps)
+                    Standard Form
                 </h3>
-                <div id="step-by-step"></div>
+                <div id="standard-form-content" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-color); background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left; line-height: 2;">
+                </div>
             </div>
 
-            <!-- 3. Graphical Plots -->
+            <div class="glass-card" id="final-card"></div>
+
+            <!-- Graphical Plotting Layout -->
             <div class="glass-card hidden" id="graph-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase;">
-                        Scientific Graphical Analysis
-                    </h3>
-                    <div id="graph-controls" style="display: flex; gap: 10px;">
-                        <span style="font-size: 0.7rem; color: var(--text-dim);">Engine: <strong style="color: var(--sci-teal);">D3 / Three.js</strong></span>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div class="graph-container">
-                        <div id="plot-2d" style="width: 100%; min-height: 450px;"></div>
-                        <div style="position: absolute; bottom: 10px; right: 10px; font-size: 0.6rem; color: var(--text-dim); z-index: 10;">2D CONSTRAINTS PANEL</div>
-                    </div>
-                    <div class="graph-container">
-                        <div id="plot-3d" style="width: 100%; min-height: 450px;"></div>
-                        <div style="position: absolute; bottom: 10px; right: 10px; font-size: 0.6rem; color: var(--text-dim); z-index: 10;">3D SPATIAL PERSPECTIVE</div>
-                    </div>
-                </div>
-                <div id="iteration-stepper" style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 15px;">
-                    <!-- Dynamically populated if needed -->
-                </div>
-            </div>
-
-            <!-- 4. Final Result & Interpretation -->
-            <div class="glass-card" id="final-result-card">
-                <div id="z-value-display"></div>
-                <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;">
                 <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
-                    Final Interpretation & Analysis
+                    Graphical Analysis
                 </h3>
-                <div id="interpretation-content"></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div id="plot-2d" style="width: 100%; min-height: 400px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+                    <div id="plot-3d" style="width: 100%; min-height: 400px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+                </div>
             </div>
 
-            <div style="text-align: center; margin-top: 30px;">
-                <button id="pdf-btn" class="btn-gen hidden" onclick="downloadPDF()">📥 Export Full PDF Report</button>
+            <div class="glass-card hidden" id="interpretation-section">
+                <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
+                    Result Interpretation
+                </h3>
+                <div id="interpretation-content">
+                    <p style="color: var(--text-dim); line-height: 1.8;">
+                        Interpretation of variable values, optimal point, maxima/minima behavior,
+                        and constraint impact will appear here after solving.
+                    </p>
+                </div>
             </div>
-        </section>
 
             <div class="glass-card hidden" id="sensitivity-section">
                 <h3 style="font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">
@@ -314,13 +285,15 @@ x, y >= 0"></textarea>
                 <div id="sensitivity-content" style="overflow-x: auto;"></div>
             </div>
 
+            <div class="glass-card">
+                <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
+                    Mathematical Iterations
+                </h3>
+                <div id="step-by-step"></div>
+            </div>
         </section>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
-<<<<<<< HEAD
 </html>
-=======
-</html>
->>>>>>> 2699d46 (Added interactive 3D graph visualization)
