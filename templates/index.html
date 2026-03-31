@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiSolve | Professional Simplex Solver</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@500&family=Poppins:wght@800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Visualization Libraries -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="top-nav">
+        <div class="nav-logo">OptiSolve</div>
+
+        <div class="nav-right">
+            <div class="nav-links">
+                <a href="#about-section">About</a>
+                <a href="#question-section">Input</a>
+                <a href="#workspace-section">Workspace</a>
+            </div>
+
+            <button id="toggle-history" class="history-btn" onclick="toggleSidebar()">📜 History</button>
+        </div>
+    </nav>
+
+    <!-- HISTORY SIDEBAR -->
+    <div id="history-sidebar" class="sidebar">
+        <div class="sidebar-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 style="margin:0; font-size:1rem; color:var(--text-main);">RECENT LOGS</h3>
+            <button onclick="toggleSidebar()" style="background:transparent; border:none; color:var(--text-main); font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        <div id="history-list"></div> 
+    </div>
+
+    <div class="container">
+
+        <!-- HERO -->
+        <header class="hero-section">
+            <div class="hero-top">
+                <div class="theme-toggle-pill" onclick="document.getElementById('checkbox').click()">
+    <label class="theme-switch" for="checkbox">
+        <input type="checkbox" id="checkbox" onclick="toggleTheme(); event.stopPropagation();" />
+        <span class="theme-slider"></span>
+    </label>
+    <span id="theme-label">🌙 Dark</span>
+</div>
+            </div>
+
+            <div class="hero-content">
+                <span class="hero-badge">MATHEMATICAL OPTIMIZATION ASSISTANT</span>
+                <h1>OptiSolve</h1>
+                <p class="hero-tagline">Crack constraints. Maximize outcomes.</p>
+                <p class="hero-subtext">
+                    Solve Linear Programming Problems using <strong>Simplex</strong> and <strong>Big-M</strong> with
+                    clean input, mathematical iterations, sensitivity insights, and exportable reports.
+                </p>
+
+                <div class="hero-actions">
+                    <a href="#question-section" class="hero-btn primary">Start Solving</a>
+                    <a href="#about-section" class="hero-btn secondary">Learn More</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- ABOUT -->
+        <section id="about-section" class="glass-card info-section">
+            <div class="section-head">
+                <h2>About OptiSolve</h2>
+                <p>A smarter interface for solving linear optimization problems.</p>
+            </div>
+
+            <p>
+                OptiSolve is a web-based mathematical optimization assistant designed to solve
+                <strong>Linear Programming Problems (LPP)</strong> using the
+                <strong>Simplex Method</strong> and <strong>Big-M Method</strong>.
+            </p>
+            <p>
+                It helps users define objective functions, enter constraints, solve optimization
+                problems, and visualize the solution process step-by-step.
+            </p>
+
+            <div class="info-grid">
+                <div class="info-box">
+                    <h3>📘 Purpose</h3>
+                    <p>
+                        Automate simplex tableau creation, pivot operations, and final result interpretation
+                        for optimization-based mathematical problems.
+                    </p>
+                </div>
+
+                <div class="info-box">
+                    <h3>📖 What is Simplex Method?</h3>
+                    <p>
+                        The Simplex Method is an algorithm used to solve linear programming problems
+                        by moving from one feasible solution to another until the optimal value is found.
+                    </p>
+                </div>
+
+                <div class="info-box" id="guide-section">
+                    <h3>🧮 How to Use</h3>
+                    <ul>
+                        <li>Paste or type your optimization problem</li>
+                        <li>Or use the manual simplex grid</li>
+                        <li>Choose Maximize / Minimize</li>
+                        <li>Run the solver</li>
+                        <li>View iterations and export report</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h3>⚙️ Supported Operations</h3>
+                    <ul>
+                        <li>Linear Programming Problems</li>
+                        <li>Maximization / Minimization</li>
+                        <li>Simplex & Big-M Method</li>
+                        <li>Step-by-step iterations</li>
+                        <li>History logs and PDF export</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h3>🚫 Limitations</h3>
+                    <ul>
+                        <li>Only supports linear optimization problems</li>
+                        <li>OCR / image parsing is UI-ready but not fully connected</li>
+                        <li>Advanced 3D visualization can be added next</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- SMART INPUT -->
+        <section id="question-section" class="glass-card question-section">
+            <div class="section-head">
+                <h2>Smart Question Input</h2>
+                <p>Enter your math or optimization problem in the most convenient way.</p>
+            </div>
+
+            <div class="question-grid">
+                <!-- Manual Text Input -->
+                <div class="question-box">
+                    <h3>📝 Type / Paste Question</h3>
+                    <p>Paste a mathematical problem, objective function, or linear programming expression.</p>
+
+                    <textarea id="question-text" rows="8" placeholder="Example:
+Maximize Z = 3x + 2y
+Subject to:
+x + y <= 4
+2x + y <= 5
+x, y >= 0"></textarea>
+
+                    <div class="question-actions">
+                        <button class="btn-gen" onclick="parseTextQuestion()">Parse Question</button>
+                        <button class="btn-clear" onclick="clearQuestionInput()">Clear Text</button>
+                    </div>
+                </div>
+                <div id="parse-status" class="parse-status hidden"></div>
+
+                <!-- File / OCR Upload -->
+                <div class="question-box">
+                    <h3>🔍 Smart Image Scan</h3>
+                    <p>Upload a photo of your LPP problem — OCR runs locally in your browser, no API key needed.</p>
+
+                    <div class="upload-zone" id="drop-zone">
+                        <p>📥 Drag & Drop Problem Image</p>
+                        <span>or</span>
+                        <label for="file-upload" class="upload-label">Choose File</label>
+                        <input type="file" id="file-upload" accept=".png,.jpg,.jpeg,.pdf" hidden>
+                        <small>Supported: JPG, PNG, PDF</small>
+                    </div>
+
+                    <div id="file-preview" class="file-preview hidden"></div>
+
+                    <div id="ocr-status" class="hidden" style="margin-top: 15px; padding: 10px; background: rgba(45, 212, 191, 0.1); border-radius: 8px; border: 1px solid var(--sci-teal); display: flex; align-items: center; gap: 10px;">
+                        <div class="ocr-spinner"></div>
+                        <span id="ocr-message" style="font-size: 0.75rem; color: var(--sci-teal); font-weight: 600;">Initialising Tesseract OCR...</span>
+                    </div>
+
+                    <canvas id="preprocess-canvas" class="hidden"></canvas>
+
+                    <div class="question-actions">
+                        <button class="btn-gen" onclick="processUploadedFile()">🔍 Scan & Solve</button>
+                        <button class="btn-clear" onclick="clearUploadedFile()">Remove File</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-note">
+                <p>
+                    <strong>Tip:</strong> If parsing is unavailable or your input is complex,
+                    use the <strong>manual simplex workspace</strong> below.
+                </p>
+            </div>
+        </section>
+
+        <!-- WORKSPACE -->
+        <section id="workspace-section" class="glass-card">
+            <div class="section-head">
+                <h2>Manual Solver Workspace</h2>
+                <p>Configure variables and constraints directly for simplex solving.</p>
+            </div>
+
+            <div class="setup-row">
+                <div class="input-box">
+                    <label>Decision Variables</label>
+                    <input type="number" id="vars" value="2" min="1" max="10">
+                </div>
+                <div class="input-box">
+                    <label>Constraints</label>
+                    <input type="number" id="cons" value="2" min="1" max="10">
+                </div>
+                <button class="btn-gen" onclick="generate()">Initialize Grid</button>
+                <button class="btn-clear" onclick="resetAll()">Clear</button>
+            </div>
+        </section>
+
+        <section id="math-ui" class="hidden">
+            <div class="glass-card">
+                <div class="toggle-container">
+                    <span style="color: var(--text-dim)">Maximize</span>
+                    <label class="switch">
+                        <input type="checkbox" id="is_min">
+                        <span class="slider"></span>
+                    </label>
+                    <span style="color: var(--text-dim)">Minimize</span>
+                </div>
+                <div id="obj-row" class="math-row"></div>
+            </div>
+
+            <div class="glass-card">
+                <div id="cons-list"></div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn-solve" onclick="runSolver()">Run Simplex Algorithm</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="output" class="hidden">
+            
+            <!-- Output Card Order: Variables -> Iterations -> Graphs -> Final Result -->
+            
+            <!-- 1. Decision Variable Values -->
+            <div class="glass-card hidden" id="variables-card">
+                <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
+                    Optimal Variable Values
+                </h3>
+                <div id="variables-content" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+            </div>
+
+            <!-- 2. Iteration Tables -->
+            <div class="glass-card" id="iterations-card">
+                <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
+                    Solution Iterations (Simplex Steps)
+                </h3>
+                <div id="step-by-step"></div>
+            </div>
+
+            <!-- 3. Graphical Plots -->
+            <div class="glass-card hidden" id="graph-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase;">
+                        Scientific Graphical Analysis
+                    </h3>
+                    <div id="graph-controls" style="display: flex; gap: 10px;">
+                        <span style="font-size: 0.7rem; color: var(--text-dim);">Engine: <strong style="color: var(--sci-teal);">D3 / Three.js</strong></span>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="graph-container">
+                        <div id="plot-2d" style="width: 100%; min-height: 450px;"></div>
+                        <div style="position: absolute; bottom: 10px; right: 10px; font-size: 0.6rem; color: var(--text-dim); z-index: 10;">2D CONSTRAINTS PANEL</div>
+                    </div>
+                    <div class="graph-container">
+                        <div id="plot-3d" style="width: 100%; min-height: 450px;"></div>
+                        <div style="position: absolute; bottom: 10px; right: 10px; font-size: 0.6rem; color: var(--text-dim); z-index: 10;">3D SPATIAL PERSPECTIVE</div>
+                    </div>
+                </div>
+                <div id="iteration-stepper" style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 15px;">
+                    <!-- Dynamically populated if needed -->
+                </div>
+            </div>
+
+            <!-- 4. Final Result & Interpretation -->
+            <div class="glass-card" id="final-result-card">
+                <div id="z-value-display"></div>
+                <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;">
+                <h3 style="font-size: 0.8rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">
+                    Final Interpretation & Analysis
+                </h3>
+                <div id="interpretation-content"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button id="pdf-btn" class="btn-gen hidden" onclick="downloadPDF()">📥 Export Full PDF Report</button>
+            </div>
+        </section>
+
+            <div class="glass-card hidden" id="sensitivity-section">
+                <h3 style="font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">
+                    Sensitivity Analysis & Shadow Prices
+                </h3>
+                <div id="sensitivity-content" style="overflow-x: auto;"></div>
+            </div>
+
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
