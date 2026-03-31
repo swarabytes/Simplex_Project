@@ -5,6 +5,35 @@
 
 let currentSolutionId = null;
 
+// ✅ GLOBAL INPUT VALIDATION (NEW)
+function validateFullInput(n, m) {
+    for (let i = 0; i < n; i++) {
+        let val = document.getElementById(`c${i}`)?.value;
+        if (val === "" || isNaN(val)) {
+            alert(`Invalid objective coefficient at x${i+1}`);
+            return false;
+        }
+    }
+
+    for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+            let val = document.getElementById(`a${i}${j}`)?.value;
+            if (val === "" || isNaN(val)) {
+                alert(`Invalid constraint coefficient at row ${i+1}, column ${j+1}`);
+                return false;
+            }
+        }
+
+        let rhs = document.getElementById(`b${i}`)?.value;
+        if (rhs === "" || isNaN(rhs)) {
+            alert(`Invalid RHS value at constraint ${i+1}`);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 // --- 1. THEME LOGIC ---
 
 function toggleTheme() {
@@ -82,6 +111,11 @@ function generate() {
 async function runSolver() {
     const n = parseInt(document.getElementById("vars").value);
     const m = parseInt(document.getElementById("cons").value);
+    // 🚨 NEW VALIDATION
+if (n > 10 || m > 10) {
+    alert("Maximum 10 variables and 10 constraints allowed.");
+    return;
+}
     const is_min = document.getElementById("is_min").checked;
 
     let c = [], A = [], b = [], signs = [];
@@ -107,6 +141,9 @@ async function runSolver() {
     }
 
     const solveBtn = document.querySelector(".btn-solve");
+    // ✅ Prevent multiple clicks (bug fix)
+    if (solveBtn.disabled) return;
+    solveBtn.disabled = true;
     const originalText = solveBtn.innerText;
     solveBtn.innerText = "Computing...";
 
@@ -137,9 +174,10 @@ async function runSolver() {
     } catch (error) {
         console.error("Fetch Error:", error);
         alert("Connection to server failed. Ensure the Python server is running.");
-    } finally {
-        solveBtn.innerText = originalText;
-    }
+    }finally {
+    solveBtn.innerText = originalText;
+    solveBtn.disabled = false; // re-enable button
+}
 }
 
 // --- 4. UI RENDERING ---
