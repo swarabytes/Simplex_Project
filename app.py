@@ -58,6 +58,9 @@ class SimplexHistory(db.Model):
 with app.app_context():
     db.create_all()
 
+# --- OPTIMIZATION NOTES ---
+qs_graphs_note = "<b>Note:</b> Graphical representations are mathematically generated based on constraints. Feasible regions are calculated using boundary intersections."
+
 # --- SOLVER LOGIC ---
 
 def normalize_constraints(A, b, signs):
