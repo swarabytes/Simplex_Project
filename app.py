@@ -466,13 +466,15 @@ def build_pdf_report(h, img2d_b64=None, img3d_b64=None):
     elements.append(Paragraph(graph_explanation, styles['Normal']))
     
     elements.append(Spacer(1, 16))
-    qs_graphs_note = (
-        "<b>Interactive Questions (Qs) & Graphs:</b> While static graphical snapshots are rendered above (if available), "
-        "you can input your original source questions (Qs) natively into the OptiSolve Web Assistant. "
-        "This allows you to dynamically parse objective functions, spin 3D structures, and zoom into 2D vertices "
-        "live within the web workspace."
-    )
     elements.append(Paragraph(qs_graphs_note, styles['Normal']))
+    
+    elements.append(Spacer(1, 24))
+    feedback_note = (
+        "<b>We Value Your Feedback!</b><br/>"
+        "Help us improve OptiSolve by sharing your thoughts: "
+        "<a href='https://forms.gle/example' color='blue'>Give Feedback</a>"
+    )
+    elements.append(Paragraph(feedback_note, styles['Normal']))
     
     doc.build(elements)
     buffer.seek(0)
